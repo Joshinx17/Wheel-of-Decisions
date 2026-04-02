@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wheel of Decision</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0c14;
+    --surface: #17141f;
+    --surface2: #1f1b2c;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ecff;
+    --muted: rgba(240,236,255,0.45);
+    --accent: #c084fc;
+    --accent2: #818cf8;
+    --red: #f87171;
+    --spin-grad: linear-gradient(135deg, #c084fc, #818cf8);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.18;
+  }
+  .orb1 { width: 500px; height: 500px; background: #7c3aed; top: -150px; left: -150px; }
+  .orb2 { width: 400px; height: 400px; background: #4f46e5; bottom: -100px; right: -100px; }
+  .orb3 { width: 300px; height: 300px; background: #db2777; top: 40%; left: 50%; transform: translateX(-50%); opacity: 0.1; }
+
+  .page { position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 3.5rem 1rem 2rem;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 96px);
+    letter-spacing: 0.04em;
+    line-height: 0.95;
+    background: linear-gradient(135deg, #e9d5ff 0%, #a78bfa 40%, #818cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+  }
+  header p {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 380px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* Main layout */
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 1.25rem 4rem;
+  }
+
+  /* Input section */
+  #input-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .input-card {
+    width: 100%;
+    max-width: 540px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.75rem;
+    backdrop-filter: blur(20px);
+  }
+
+  .input-label {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .input-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-row input::placeholder { color: rgba(240,236,255,0.25); }
+  .input-row input:focus { border-color: var(--accent); }
+
+  .add-btn {
+    background: var(--spin-grad);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .add-btn:hover { opacity: 0.88; }
+  .add-btn:active { transform: scale(0.97); }
+
+  /* Tags */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 28px;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    animation: tagIn 0.2s ease;
+  }
+  @keyframes tagIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .tag-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    font-size: 15px;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    color: inherit;
+  }
+  .tag-remove:hover { opacity: 1; }
+
+  .count-note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 6px;
+  }
+
+  /* Decide button */
+  .decide-btn {
+    position: relative;
+    background: transparent;
+    border: 1px solid rgba(192,132,252,0.4);
+    border-radius: 16px;
+    padding: 16px 48px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.25s;
+    overflow: hidden;
+  }
+  .decide-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--spin-grad);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .decide-btn:hover::before { opacity: 0.12; }
+  .decide-btn:hover { border-color: var(--accent); box-shadow: 0 0 28px rgba(192,132,252,0.22); }
+  .decide-btn:active { transform: scale(0.98); }
+  .decide-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .decide-btn:disabled:hover::before { opacity: 0; }
+  .decide-btn:disabled:hover { box-shadow: none; border-color: rgba(192,132,252,0.4); }
+  .decide-btn span { position: relative; z-index: 1; }
+
+  /* Wheel section */
+  #wheel-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.75rem;
+    animation: fadeUp 0.5s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .wheel-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #wheel-canvas {
+    display: block;
+    border-radius: 50%;
+    box-shadow: 0 0 60px rgba(129,140,248,0.18), 0 0 120px rgba(192,132,252,0.08);
+  }
+
+  /* Arrow pointer — points LEFT toward the wheel */
+  .arrow-container {
+    position: absolute;
+    right: -24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+    filter: drop-shadow(0 2px 8px rgba(248,113,113,0.55));
+  }
+  .arrow-shaft {
+    width: 22px;
+    height: 6px;
+    background: linear-gradient(270deg, #ef4444, #f87171);
+    border-radius: 0 3px 3px 0;
+  }
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-top: 13px solid transparent;
+    border-bottom: 13px solid transparent;
+    border-right: 26px solid #ef4444;
+  }
+
+  /* Spin button */
+  .spin-btn {
+    position: relative;
+    background: var(--spin-grad);
+    border: none;
+    border-radius: 16px;
+    padding: 16px 56px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.14em;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 30px rgba(192,132,252,0.3);
+    overflow: hidden;
+  }
+  .spin-btn::after {
+    content: '';
+    position: absolute;
+    top: -50%; left: -60%;
+    width: 40%;
+    height: 200%;
+    background: rgba(255,255,255,0.18);
+    transform: skewX(-20deg);
+    transition: left 0.5s ease;
+  }
+  .spin-btn:hover::after { left: 130%; }
+  .spin-btn:hover { box-shadow: 0 6px 40px rgba(192,132,252,0.45); transform: translateY(-1px); }
+  .spin-btn:active { transform: scale(0.98) translateY(0); }
+  .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  /* Result */
+  #result-box {
+    display: none;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    animation: resultPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    background: var(--surface);
+  }
+  @keyframes resultPop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  #result-box .rl { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+  #result-box .rw { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 0.06em; line-height: 1.1; }
+  #result-box .re { font-size: 13px; color: var(--muted); margin-top: 10px; font-style: italic; }
+
+  /* Confetti dots */
+  .confetti-dot {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 999;
+    animation: confettiFall 1.4s ease forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(320px) rotate(720deg); opacity: 0; }
+  }
+
+  /* Reset */
+  .reset-link {
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    border-bottom: 1px dashed rgba(240,236,255,0.2);
+  }
+  .reset-link:hover { color: var(--text); border-bottom-color: var(--text); cursor: pointer; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 12px;
+    color: rgba(240,236,255,0.2);
+    letter-spacing: 0.06em;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    header { padding: 2.5rem 1rem 1.5rem; }
+    .input-card { padding: 1.25rem; }
+    #wheel-canvas { width: 280px !important; height: 280px !important; }
+    .spin-btn { padding: 14px 40px; font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Let fate decide</p>
+    <h1>Wheel of<br>Decision</h1>
+    <p>Can't make up your mind? Add your options, spin the wheel, and surrender control to the universe.</p>
+  </header>
+
+  <main>
+    <!-- INPUT SECTION -->
+    <div id="input-section">
+      <div class="input-card">
+        <div class="input-label">Add your options</div>
+        <div class="input-row" style="margin-bottom: 1rem;">
+          <input type="text" id="option-input" placeholder="e.g. Pizza, Sushi, Tacos…" maxlength="40" autocomplete="off" />
+          <button class="add-btn" onclick="addOption()">+ Add</button>
+        </div>
+        <div class="tags" id="tags"></div>
+        <div class="count-note" id="count-note">0 / 12 options</div>
+      </div>
+      <button class="decide-btn" id="decide-btn" onclick="showWheel()" disabled>
+        <span>Build the Wheel →</span>
+      </button>
+    </div>
+
+    <!-- WHEEL SECTION -->
+    <div id="wheel-section">
+      <div class="wheel-container">
+        <canvas id="wheel-canvas" width="340" height="340"></canvas>
+        <div class="arrow-container">
+          <div class="arrow-shaft"></div>
+          <div class="arrow-head"></div>
+        </div>
+      </div>
+      <button class="spin-btn" id="spin-btn" onclick="spin()">Spin the Wheel</button>
+      <div id="result-box">
+        <div class="rl">The wheel has spoken</div>
+        <div class="rw" id="winner-text"></div>
+        <div class="re">destiny has been decided ✦</div>
+      </div>
+      <button class="reset-link" onclick="resetAll()">← Start over with new options</button>
+    </div>
+  </main>
+
+  <footer>WHEEL OF DECISION &nbsp;·&nbsp; LET THE UNIVERSE CHOOSE</footer>
+</div>
+
+<script>
+  const PALETTE = [
+    { fill: '#a78bfa', text: '#2e1065' },
+    { fill: '#f472b6', text: '#500724' },
+    { fill: '#34d399', text: '#022c22' },
+    { fill: '#fb923c', text: '#431407' },
+    { fill: '#60a5fa', text: '#1e3a8a' },
+    { fill: '#facc15', text: '#422006' },
+    { fill: '#f87171', text: '#450a0a' },
+    { fill: '#4ade80', text: '#052e16' },
+    { fill: '#c084fc', text: '#3b0764' },
+    { fill: '#38bdf8', text: '#082f49' },
+    { fill: '#fb7185', text: '#4c0519' },
+    { fill: '#a3e635', text: '#1a2e05' },
+  ];
+
+  let options = [];
+  let angle = 0;
+  let spinning = false;
+
+  const optionInput = document.getElementById('option-input');
+  const tagsEl = document.getElementById('tags');
+  const decideBtn = document.getElementById('decide-btn');
+  const countNote = document.getElementById('count-note');
+  const canvas = document.getElementById('wheel-canvas');
+  const ctx = canvas.getContext('2d');
+
+  optionInput.addEventListener('keydown', e => { if (e.key === 'Enter') addOption(); });
+
+  function addOption() {
+    const val = optionInput.value.trim();
+    if (!val || options.length >= 12) return;
+    options.push(val);
+    optionInput.value = '';
+    renderTags();
+    updateCount();
+    decideBtn.disabled = options.length < 2;
+  }
+
+  function removeOption(i) {
+    options.splice(i, 1);
+    renderTags();
+    updateCount();
+    decideBtn.disabled = options.length < 2;
+  }
+
+  function renderTags() {
+    tagsEl.innerHTML = '';
+    options.forEach((o, i) => {
+      const p = PALETTE[i % PALETTE.length];
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.style.background = p.fill + '28';
+      tag.style.color = '#f0ecff';
+      tag.style.border = `1px solid ${p.fill}55`;
+      tag.innerHTML = `${escape(o)}<button class="tag-remove" onclick="removeOption(${i})" title="Remove" style="color:#f0ecff">×</button>`;
+      tagsEl.appendChild(tag);
+    });
+  }
+
+  function escape(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function updateCount() {
+    countNote.textContent = `${options.length} / 12 options`;
+  }
+
+  function showWheel() {
+    if (options.length < 2) return;
+    document.getElementById('input-section').style.display = 'none';
+    const ws = document.getElementById('wheel-section');
+    ws.style.display = 'flex';
+    document.getElementById('result-box').style.display = 'none';
+    angle = 0;
+    drawWheel(angle);
+  }
+
+  function drawWheel(rot) {
+    const n = options.length;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = cx - 6;
+    const slice = (2 * Math.PI) / n;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 5, 0, 2 * Math.PI);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    for (let i = 0; i < n; i++) {
+      const start = rot + i * slice;
+      const end = start + slice;
+      const p = PALETTE[i % PALETTE.length];
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, end);
+      ctx.closePath();
+      ctx.fillStyle = p.fill;
+      ctx.fill();
+
+      // subtle inner shadow/border
+      ctx.strokeStyle = 'rgba(14,12,20,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // text
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(start + slice / 2);
+      const label = options[i].length > 15 ? options[i].slice(0, 14) + '…' : options[i];
+      const fs = label.length <= 5 ? 20 : label.length <= 9 ? 17 : label.length <= 13 ? 15 : 13;
+      ctx.font = `600 ${fs}px 'DM Sans', sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      // dark shadow for contrast
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, r - 16, 0);
+      ctx.shadowColor = 'transparent';
+      ctx.restore();
+    }
+
+    // center hub
+    const hubGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 20);
+    hubGrad.addColorStop(0, '#e9d5ff');
+    hubGrad.addColorStop(1, '#7c3aed');
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+    ctx.fillStyle = hubGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // center dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById('spin-btn').disabled = true;
+    document.getElementById('result-box').style.display = 'none';
+
+    const n = options.length;
+    const slice = (2 * Math.PI) / n;
+    const spins = 6 + Math.floor(Math.random() * 5);
+    const targetIndex = Math.floor(Math.random() * n);
+    // The arrow points right (0 radians). We want targetIndex sector to end at right.
+    // Sector i occupies [i*slice, (i+1)*slice]. Center of sector i = i*slice + slice/2.
+    // We want: (angle + center_i) ≡ 0 (mod 2π) after spin.
+    // So total rotation needed = -(center_i) = -(targetIndex*slice + slice/2) + 2π*k
+    const sectorCenter = targetIndex * slice + slice / 2;
+    const extraRand = (Math.random() - 0.5) * slice * 0.6; // slight randomness within winning sector
+    const totalAngle = spins * 2 * Math.PI + (2 * Math.PI - (angle % (2 * Math.PI)) - sectorCenter + extraRand);
+    const duration = 4500 + Math.random() * 1800;
+    const startTime = performance.now();
+    const startAngle = angle;
+
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3.5); }
+
+    function frame(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      angle = startAngle + totalAngle * easeOutCubic(t);
+      drawWheel(angle);
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        spinning = false;
+        document.getElementById('spin-btn').disabled = false;
+        showResult(targetIndex);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function showResult(i) {
+    const box = document.getElementById('result-box');
+    const winner = document.getElementById('winner-text');
+    const p = PALETTE[i % PALETTE.length];
+    winner.textContent = options[i];
+    winner.style.color = p.fill;
+    box.style.borderColor = p.fill + '44';
+    box.style.boxShadow = `0 0 40px ${p.fill}22`;
+    box.style.display = 'block';
+    launchConfetti(p.fill);
+  }
+
+  function launchConfetti(color) {
+    const colors = [color, '#c084fc', '#818cf8', '#f472b6', '#34d399', '#fb923c'];
+    for (let i = 0; i < 32; i++) {
+      setTimeout(() => {
+        const dot = document.createElement('div');
+        dot.className = 'confetti-dot';
+        dot.style.background = colors[Math.floor(Math.random() * colors.length)];
+        dot.style.left = (20 + Math.random() * 60) + 'vw';
+        dot.style.top = (30 + Math.random() * 30) + 'vh';
+        dot.style.width = (6 + Math.random() * 8) + 'px';
+        dot.style.height = (6 + Math.random() * 8) + 'px';
+        dot.style.animationDuration = (1 + Math.random() * 0.8) + 's';
+        dot.style.animationDelay = (Math.random() * 0.3) + 's';
+        document.body.appendChild(dot);
+        setTimeout(() => dot.remove(), 2500);
+      }, i * 30);
+    }
+  }
+
+  function resetAll() {
+    options = [];
+    angle = 0;
+    spinning = false;
+    renderTags();
+    updateCount();
+    decideBtn.disabled = true;
+    document.getElementById('input-section').style.display = 'flex';
+    document.getElementById('wheel-section').style.display = 'none';
+    document.getElementById('result-box').style.display = 'none';
+    optionInput.value = '';
+    optionInput.focus();
+  }
+
+  // init
+  updateCount();
+</script>
+</body>
+</html>
